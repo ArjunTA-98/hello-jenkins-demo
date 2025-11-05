@@ -1,34 +1,47 @@
 pipeline {
   agent any
   stages {
-    stage('Checkout') { steps { checkout scm } }
+    stage('Checkout') { 
+      steps { 
+        checkout scm 
+      } 
+    }
     
     stage('Install & Build') {
       steps {
-        // Install Node dependencies
+        sh 'echo Installing dependencies...'
+        // 1. Install project dependencies
         sh 'npm install'
-        // Install PM2 globally if it is not already installed
-        sh 'sudo npm install -g pm2' 
+        
+        // 2. Install PM2 globally for the Jenkins user (NO sudo)
+        // This is the CRITICAL fix for the password error.
+        sh 'npm install -g pm2' 
       }
     }
     
     stage('Deploy & Verify') {
       steps {
-        sh 'echo Deploying application...'
-        // Stop any existing instance of the app gracefully
+        sh 'echo Deploying application persistently...'
+        // 3. Stop any existing app instance named 'hello-node'
         sh 'pm2 delete hello-node || true' 
-        // Start the application using PM2 and name it 'hello-node'
+        
+        // 4. Start the application using PM2 and name it 'hello-node'
         sh 'pm2 start server.js --name hello-node' 
         
         sh 'sleep 5' // Give the app time to start
         
-        // Verify the app is running persistently on port 3000
+        // 5. Verify the app is running persistently on port 3000
         sh 'curl -f http://localhost:3000/health || echo Health check failed' 
       }
     }
   }
   post {
-    success { echo '✅ Deployment successful. App is running persistently on port 3000.' }
-    failure { echo '❌ Deployment failed.' }
+    success { 
+      echo '✅ Deployment successful. App is running persistently on port 3000.' 
+      // After success, you can check the status from your server by SSHing in and running: pm2 status
+    }
+    failure { 
+      echo '❌ Deployment failed. Check the Build log for errors.' 
+    }
   }
 }
