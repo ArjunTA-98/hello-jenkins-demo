@@ -2,22 +2,33 @@ pipeline {
   agent any
   stages {
     stage('Checkout') { steps { checkout scm } }
-    stage('Build') {
+    
+    stage('Install & Build') {
       steps {
-        sh 'echo Installing...'
+        // Install Node dependencies
         sh 'npm install'
+        // Install PM2 globally if it is not already installed
+        sh 'sudo npm install -g pm2' 
       }
     }
-    stage('Run') {
+    
+    stage('Deploy & Verify') {
       steps {
-        sh 'node server.js &'
-        sh 'sleep 2'
-        sh 'curl -f http://localhost:3000/health || echo Health check failed'
+        sh 'echo Deploying application...'
+        // Stop any existing instance of the app gracefully
+        sh 'pm2 delete hello-node || true' 
+        // Start the application using PM2 and name it 'hello-node'
+        sh 'pm2 start server.js --name hello-node' 
+        
+        sh 'sleep 5' // Give the app time to start
+        
+        // Verify the app is running persistently on port 3000
+        sh 'curl -f http://localhost:3000/health || echo Health check failed' 
       }
     }
   }
   post {
-    success { echo '✅ Build successful' }
-    failure { echo '❌ Build failed' }
+    success { echo '✅ Deployment successful. App is running persistently on port 3000.' }
+    failure { echo '❌ Deployment failed.' }
   }
 }
