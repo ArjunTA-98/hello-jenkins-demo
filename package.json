@@ -5,7 +5,6 @@
     "start": "node server.js" 
   },
   "dependencies": {
-    // ADD THIS LINE: PM2 will now be installed locally during 'npm install'
     "pm2": "^5.3.1" 
   }
 }
